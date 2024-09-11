@@ -3,3 +3,4 @@ secrets.rb
 logs/
 assets/
 rsync*.sh
+*.log

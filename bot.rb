@@ -151,6 +151,75 @@ def random_choice(message)
   return command_arguments(message).split(",").sample(random: SecureRandom)
 end
 
+def is_afk
+  response = "I don't know where my Master is..."
+
+  begin
+    lastLines = IO.readlines("arduino.log")[-4..-1]
+    disLine = lastLines.select { |e| e =~ /^DIS/ }.first
+    value = disLine[/ \d+/].to_i
+
+    if value < 20
+      response = "My Master is touching me.. >.< (#{value}cm)"
+    elsif value < 60
+      response = "My Master is with me.. <3 (#{value}cm)"
+    else
+      response = "My Master is away from me.. :/ (#{value}cm)"
+    end
+  rescue
+    response = "I don't know where my Master is.. (/><\)"
+  end
+
+  return response
+end
+
+def heat
+  begin
+    lastLines = IO.readlines("arduino.log")[-4..-1]
+    dhtLines = lastLines.select { |e| e =~ /^DHT/ }
+    dht1 = dhtLines.first.chomp
+    dht2 = dhtLines.last.chomp
+
+    dht1Hum = dht1[/H\d+\.\d+/][/\d+\.\d+/].to_f
+    dht1Temp = dht1[/C\d+\.\d+/][/\d+\.\d+/].to_f
+    dht1Index = dht1[/I\d+\.\d+/][/\d+\.\d+/].to_f
+
+    dht2Hum = dht2[/H\d+\.\d+/][/\d+\.\d+/].to_f
+    dht2Temp = dht2[/C\d+\.\d+/][/\d+\.\d+/].to_f
+    dht2Index = dht2[/I\d+\.\d+/][/\d+\.\d+/].to_f
+
+    line = "According to sensor 1, humidity: #{dht1Hum}% temperature #{dht1Temp}C and heat index is #{dht1Index}C.\nBut sensor 2 says humidity: #{dht2Hum}% temperature #{dht2Temp}C and heat index is #{dht2Index}C."
+  rescue
+    line = "I don't know.."
+  end
+
+  return line
+end
+
+def light
+  begin
+    lastLines = IO.readlines("arduino.log")[-4..-1]
+    line = lastLines.select { |e| e =~ /^LIG/ }.first.chomp
+    value = line[/ \d+/].to_i
+
+    if value > 500
+      response = "It's too bright for my eyes >.< (#{value})"
+    elsif value > 400
+      response = "It's very bright! (#{value})"
+    elsif value > 100
+      response = "It's dim, lovely! (#{value})"
+    elsif value > 50
+      response = "It's dark but I can still see my Master (#{value})"
+    else
+      response = "It's very dark.. But I-I'm not scared at all! (#{value})"
+    end
+  rescue
+    response = "I don't know, ask to my Master."
+  end
+
+  return response
+end
+
 maya_logger("M A Y A is now awake!")
 
 begin
@@ -240,6 +309,12 @@ begin
                   reply_text = forex(message.text)
                 when /^\/choice/i
                   reply_text = random_choice(message.text)
+                when /^\/afk/i
+                  reply_text = is_afk
+                when /^\/room/i
+                  reply_text = heat
+                when /^\/light/i
+                  reply_text = light
 
 				# Chatting
 				when /^Maya$/i
