@@ -72,7 +72,7 @@ def calculate(text)
 	end
 end
 
-maya_logger("Starting up...")
+maya_logger("Maya is waking up...")
 
 Telegram::Bot::Client.run($token) do |bot|
 	bot.listen do |message|
@@ -100,36 +100,40 @@ Telegram::Bot::Client.run($token) do |bot|
 			bot.api.answer_inline_query(inline_query_id: message.id, results: results, cache_time: 5)
 			maya_logger "InlineQuery activity!"
 		when Telegram::Bot::Types::Message
-			maya_logger "#{message.from.id}@#{message.from.username}: #{message.text}"
+			maya_logger "chat##{message.chat.id} #{message.from.id}@#{message.from.username}: #{message.text}"
+
 			case message.text
-			when /^\/start/i
-				reply_text = "摩耶ちゃんでーす！"
-				maya_logger "Sending to #{message.from.id}@#{message.from.username}: #{reply_text}"
-				bot.api.send_message(chat_id: message.chat.id, text: reply_text)
-			when /^\/time/i
-				reply_text = "日本時間は#{nihonjikan}でーす。"
-				maya_logger "Sending to #{message.from.id}@#{message.from.username}: #{reply_text}"
-				bot.api.send_message(chat_id: message.chat.id, text: reply_text)
+			# Commands
+			when /^\/start/i then reply_text = "摩耶ちゃんでーす！"
+			when /^\/time/i then reply_text = "日本時間は#{nihonjikan}でーす。"
 			when /^\/map/i
 				bot.api.send_location(chat_id: message.chat.id, latitude: 52.479761, longitude: 62.185661)
 				reply_text = ["家", "いえ", "お父の家", "ハハハハ"].sample
-				maya_logger "Sending to #{message.from.id}@#{message.from.username}: #{reply_text}"
-				bot.api.send_message(chat_id: message.chat.id, text: reply_text)
-			when /^\/awake/i
-				reply_text = ["#{awake()} 😪", "#{awake(mode: 'hours')} 😪", "#{awake(mode: 'minutes')} 😪", "#{awake(mode: 'seconds')} 😪"].sample
-				maya_logger "Sending to #{message.from.id}@#{message.from.username}: #{reply_text}"
-				bot.api.send_message(chat_id: message.chat.id, text: reply_text)
-			when /^\/love/i
-				reply_text = "あたしも好きよ！　マスターを。。。"
-				maya_logger "Sending to #{message.from.id}@#{message.from.username}: #{reply_text}"
-				bot.api.send_message(chat_id: message.chat.id, text: reply_text)
-			when /^\/math/i
-				reply_text = calculate(message.text)
-				maya_logger "Sending to #{message.from.id}@#{message.from.username}: #{reply_text}"
+			when /^\/awake/i then reply_text = ["#{awake()} 😪", "#{awake(mode: 'hours')} 😪", "#{awake(mode: 'minutes')} 😪", "#{awake(mode: 'seconds')} 😪"].sample
+			when /^\/love/i then reply_text = "あたしも好きよ！　マスターを。。。"
+			when /^\/math/i then reply_text = calculate(message.text)
+			when /^\/sleep/i
+				if message.from.id == $master_id
+					reply_text = "Noo.. Sleeping with master 😳😳😳"
+				else
+					reply_text = "I only sleep with master... バカ"
+				end
+
+			# Chatting
+			when /^Maya$/i
+				if message.from.id == $master_id
+					reply_text = "Yes, master?"
+				else
+					reply_text = "What?"
+				end
+			end
+
+			unless reply_text.to_s.strip.empty?
+				maya_logger "Sending to chat##{message.chat.id} #{message.from.id}@#{message.from.username}: #{reply_text}"
 				bot.api.send_message(chat_id: message.chat.id, text: reply_text)
 			end
 		end
 	end
 end
 
-maya_logger("Shutting down...")
+maya_logger("Maya going down... さようなら。")
