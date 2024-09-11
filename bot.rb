@@ -4,6 +4,7 @@ require 'dentaku'
 require 'open-uri'
 require 'json'
 require 'benchmark'
+require 'securerandom'
 
 require_relative 'maya'
 
@@ -143,7 +144,7 @@ def forex(message)
 end
 
 def random_choice(message)
-  return command_arguments(message).split(",").sample
+  return command_arguments(message).split(",").sample(random: SecureRandom)
 end
 
 maya_logger("M A Y A is now awake!")
