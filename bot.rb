@@ -10,6 +10,9 @@ $waking_up = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
 $cats = JSON.load(URI.open("https://cat-fact.herokuapp.com/facts"))
 
+$stickers = {
+}
+
 def maya_logger(text)
 	puts "#{DateTime.now} #{text}"
 	open('logs/maya.log', 'a') { |f|
@@ -73,90 +76,106 @@ end
 
 maya_logger("Maya is waking up...")
 
-Telegram::Bot::Client.run($token) do |bot|
-	bot.listen do |message|
-		case message
-		when Telegram::Bot::Types::InlineQuery
-			results = [
-				[1, 'Clock', "日本時間は#{nihonjikan}でーす。"],
-				[2, 'Awake', "#{awake()} 😪"],
-				[3, 'Lorem', 'Lorem ipsum dolor sit amet, consectetur '\
-					'adipisicing elit, sed do eiusmod tempor incididunt ut '\
-					'labore et doloremagna aliqua. Ut enim ad minim veniam, '\
-					'quis nostrud exercitation ullamco laboris nisi ut aliquip '\
-					'ex ea commodo consequat. Duis aute irure dolor in '\
-					'reprehenderit in voluptate velit esse cillum dolore eu '\
-					'fugiat nulla pariatur. Excepteur sint occaecat cupidatat '\
-					'non proident, sunt in culpa qui officia deserunt mollit '\
-					'anim id est laborum.']
-			].map do |arr|
-				Telegram::Bot::Types::InlineQueryResultArticle.new(
-					id: arr[0],
-					title: arr[1],
-					input_message_content: Telegram::Bot::Types::InputTextMessageContent.new(message_text: arr[2])
-				)
-			end
-			bot.api.answer_inline_query(inline_query_id: message.id, results: results, cache_time: 5)
-			maya_logger "InlineQuery activity!"
-		when Telegram::Bot::Types::Message
-			maya_logger "chat##{message.chat.id} #{message.from.id}@#{message.from.username}: #{message.text}"
+begin
+	Telegram::Bot::Client.run($token) do |bot|
+		bot.listen do |message|
+			case message
+			when Telegram::Bot::Types::InlineQuery
+				results = [
+					[1, 'Clock', "日本時間は#{nihonjikan}でーす。"],
+					[2, 'Awake', "#{awake()} 😪"],
+					[3, 'Lorem', 'Lorem ipsum dolor sit amet, consectetur '\
+						'adipisicing elit, sed do eiusmod tempor incididunt ut '\
+						'labore et doloremagna aliqua. Ut enim ad minim veniam, '\
+						'quis nostrud exercitation ullamco laboris nisi ut aliquip '\
+						'ex ea commodo consequat. Duis aute irure dolor in '\
+						'reprehenderit in voluptate velit esse cillum dolore eu '\
+						'fugiat nulla pariatur. Excepteur sint occaecat cupidatat '\
+						'non proident, sunt in culpa qui officia deserunt mollit '\
+						'anim id est laborum.']
+				].map do |arr|
+					Telegram::Bot::Types::InlineQueryResultArticle.new(
+						id: arr[0],
+						title: arr[1],
+						input_message_content: Telegram::Bot::Types::InputTextMessageContent.new(message_text: arr[2])
+					)
+				end
+				bot.api.answer_inline_query(inline_query_id: message.id, results: results, cache_time: 5)
+				maya_logger "InlineQuery activity!"
+			when Telegram::Bot::Types::Message
+				maya_logger "chat##{message.chat.id} #{message.from.id}@#{message.from.username}: #{message.text}"
 
-			case message.text
-			# Commands
-			when /^\/start/i then reply_text = "摩耶ちゃんでーす！"
-			when /^\/time/i then reply_text = "日本時間は#{nihonjikan}でーす。"
-			when /^\/map/i
-				bot.api.send_location(chat_id: message.chat.id, latitude: 52.479761, longitude: 62.185661)
-				reply_text = ["家", "いえ", "お父の家", "ハハハハ"].sample
-			when /^\/awake/i then reply_text = "#{awake()} 😪"
-			when /^\/love/i then reply_text = "あたしも好きよ！　マスターを。。。"
-			when /^\/math/i then reply_text = calculate(message.text)
-			when /^\/sleep/i
-				if message.from.id == $master_id
-					reply_text = "はずかしい 😳"
-				else
-					reply_text = "Sorry, but I love and only will sleep with.. my master 💕"
-				end
-			when /(^\/cat$)|(^\/cat@Mayachanbot$)/i
-				begin
-					reply_text = $cats.sample['text']
-				rescue Exception => e
-					reply_text = "No cats for today.."
-				end
-			when /^\/dogs/i
-				begin
-					bot.api.send_photo(chat_id: message.chat.id, photo: JSON.load(URI.open("http://shibe.online/api/shibes?count=1&urls=true&httpsUrls=true"))[0])
-				rescue Exception => e
-					reply_text = "No dogs for you! Bad person!!"
-				end
-			when /(^\/cats$)|(^\/cats@Mayachanbot$)/i
-				begin
-					bot.api.send_photo(chat_id: message.chat.id, photo: JSON.load(URI.open("https://aws.random.cat/meow"))['file'])
-				rescue Exception => e
-					reply_text = "No cats for you! Bad person!!"
-				end
-			when /(^\/foxes$)|(^\/foxes@Mayachanbot$)/i
-				begin
-					bot.api.send_photo(chat_id: message.chat.id, photo: JSON.load(URI.open("https://randomfox.ca/floof/"))['image'])
-				rescue Exception => e
-					reply_text = "No foxes for you! Bad person!!"
+				case message.text
+				# Commands
+				when /^\/start/i then reply_text = "摩耶ちゃんでーす！"
+				when /^\/time/i then reply_text = "日本時間は#{nihonjikan}でーす。"
+				when /^\/map/i
+					bot.api.send_location(chat_id: message.chat.id, latitude: 52.479761, longitude: 62.185661)
+					reply_text = ["家", "いえ", "お父の家", "ハハハハ"].sample
+				when /^\/awake/i then reply_text = "#{awake()} 😪"
+				when /^\/love/i then reply_text = "あたしも好きよ！　マスターを。。。"
+				when /^\/math/i then reply_text = calculate(message.text)
+				when /^\/sleep/i
+					if message.from.id == $master_id
+						reply_text = "はずかしい 😳"
+					else
+						reply_text = "Sorry, but I love and only will sleep with.. my master 💕"
+					end
+				when /(^\/cat$)|(^\/cat@Mayachanbot$)/i
+					begin
+						reply_text = $cats.sample['text']
+					rescue Exception => e
+						reply_text = "No cats for today.."
+					end
+				when /^\/dogs/i
+					begin
+						bot.api.send_photo(chat_id: message.chat.id, photo: JSON.load(URI.open("http://shibe.online/api/shibes?count=1&urls=true&httpsUrls=true"))[0])
+					rescue Exception => e
+						reply_text = "No dogs for you! Bad person!!"
+					end
+				when /(^\/cats$)|(^\/cats@Mayachanbot$)/i
+					begin
+						bot.api.send_photo(chat_id: message.chat.id, photo: JSON.load(URI.open("https://aws.random.cat/meow"))['file'])
+					rescue Exception => e
+						reply_text = "No cats for you! Bad person!!"
+					end
+				when /(^\/foxes$)|(^\/foxes@Mayachanbot$)/i
+					begin
+						bot.api.send_photo(chat_id: message.chat.id, photo: JSON.load(URI.open("https://randomfox.ca/floof/"))['image'])
+					rescue Exception => e
+						reply_text = "No foxes for you! Bad person!!"
+					end
+
+				# Chatting
+				when /^Maya$/i
+					if message.from.id == $master_id
+						sticker = 'menhera/nani.webp'
+					else
+						reply_text = "???"
+					end
+				when /^Maya I love you$/i
+					if message.from.id == $master_id
+						sticker = ['menhera/nyan_love.webp', 'menhera/nyan_paws.webp', 'menhera/pillow_hug.webp'].sample
+					else
+						reply_text = "Thank you! But I love my master.."
+					end
 				end
 
-			# Chatting
-			when /^Maya$/i
-				if message.from.id == $master_id
-					reply_text = "Yes, master?"
-				else
-					reply_text = "???"
+				unless sticker.to_s.strip.empty?
+					if $stickers.has_key?(sticker) then bot.api.send_sticker(chat_id: message.chat.id, sticker: $stickers[sticker])
+					else $stickers[sticker] = bot.api.send_sticker(chat_id: message.chat.id, sticker: Faraday::UploadIO.new(sticker, 'image/webp'))['result']['sticker']['file_id']
+					end
 				end
-			end
 
-			unless reply_text.to_s.strip.empty?
-				maya_logger "Sending to chat##{message.chat.id} #{message.from.id}@#{message.from.username}: #{reply_text}"
-				bot.api.send_message(chat_id: message.chat.id, text: reply_text)
+				unless reply_text.to_s.strip.empty?
+					maya_logger "Sending to chat##{message.chat.id} #{message.from.id}@#{message.from.username}: #{reply_text}"
+					bot.api.send_message(chat_id: message.chat.id, text: reply_text)
+				end
 			end
 		end
 	end
+rescue Exception => e
+	maya_logger("EXCEPTION: #{e}")
 end
 
 maya_logger("Maya going down... さようなら。")
