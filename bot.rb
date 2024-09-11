@@ -315,6 +315,8 @@ begin
                   reply_text = heat
                 when /^\/light/i
                   reply_text = light
+                when /^\/cam$/i
+                  photo_file = "camera.jpg"
 
 				# Chatting
 				when /^Maya$/i
@@ -422,6 +424,17 @@ begin
                           sent = bot.api.send_photo(chat_id: message.chat.id, photo: photo)
                           $photos[photo] = sent['result']['photo'][sent['result']['photo'].length - 1]['file_id']
                       end
+                    rescue Exception => e
+                      maya_logger("EXCEPTION: Photo Reply: " + e.to_s.strip)
+                    end
+				end
+
+				unless photo_file.to_s.strip.empty?
+					maya_logger "Sending to chat##{message.chat.id} #{message.from.id}@#{message.from.username}: IMG FILE #{photo}"
+					puts "Going to send image file"
+
+                    begin
+                      bot.api.send_photo(chat_id: message.chat.id, photo: Faraday::UploadIO.new(photo_file, 'image/jpeg'))
                     rescue Exception => e
                       maya_logger("EXCEPTION: Photo Reply: " + e.to_s.strip)
                     end
