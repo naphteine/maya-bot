@@ -123,7 +123,7 @@ end
 $forex_response = JSON.load(URI.open("https://www.frankfurter.app/latest?from=USD"))
 
 def forex(message)
-  lastThree = message[-3..]
+  lastThree = message.slice(-3, 3)
   response = "IDK"
   lastThree.upcase!
 
@@ -134,7 +134,11 @@ def forex(message)
   end
 
   begin
-    response = lastThree + " is " + ($forex_response["rates"][lastThree]).to_s
+    forex_rate = $forex_response["rates"][lastThree].to_s
+
+    unless forex_rate.strip.empty?
+      response = lastThree + " is " + ($forex_response["rates"][lastThree]).to_s
+    end
   rescue Exception => e
     puts e
     response = "I don't know?"
@@ -150,8 +154,15 @@ end
 maya_logger("M A Y A is now awake!")
 
 begin
+    maya_logger("M A Y A now starting connection...")
+    retries = retries || 0
+
 	Telegram::Bot::Client.run($token) do |bot|
+        puts "Connecting.."
 		bot.listen do |message|
+            puts "We received new message"
+            retries = 0
+
 			case message
 			when Telegram::Bot::Types::InlineQuery
 				results = [
@@ -204,18 +215,6 @@ begin
 				when /^\/dogs/i
 					begin
 						photo = JSON.load(URI.open("https://random.dog/woof.json"))['url']
-						ext = File.extname(URI.parse(photo).path)
-						case ext
-						when ".mp4"
-                            video = photo
-                            photo = ""
-                        when ".webm"
-                            video = photo
-                            photo = ""
-						when ".gif"
-							animation = photo
-							photo = ""
-						end
 					rescue Exception => e
 						reply_text = "No dogs for you! Bad person!!"
 					end
@@ -253,81 +252,118 @@ begin
 					if message.from.id == $master_id
 						sticker = ['menhera/nyan_love.webp', 'menhera/nyan_paws.webp', 'menhera/pillow_hug.webp'].sample
 					else
-						reply_text = "Thank you! But I love my master.."
+						reply_text = "Thank you! But only person in my heart is my Master.."
 					end
 				when /^Maya I need love$/i
 					if message.from.id == $master_id
 						sticker = ['menhera/nyan_love.webp', 'menhera/nyan_paws.webp', 'menhera/pillow_hug.webp'].sample
 						reply_text = "I love you!!"
 					else
-						reply_text = "Thank you! But I only love my master.."
+						reply_text = "Thank you! But I only love my Master.."
 					end
 				when /^Maya bring me water$/i
 					if message.from.id == $master_id
 						reply_text = "かしこまりました！　はい、どうぞう！　🥤🥤"
 					else
-						reply_text = "No! You bring me"
+						reply_text = "No! I only serve to my Master, but you can serve to me!"
 					end
 				end
+
+                # Check if photo is really photo, or are we using it for video or animation
+                unless photo.to_s.strip.empty?
+                  ext = File.extname(URI.parse(photo).path)
+                  puts "EXT: " + ext.to_s.strip
+                  case ext
+                    when ".mp4"
+                      video = photo
+                      photo = ""
+                    when ".webm"
+                      video = photo
+                      photo = ""
+                    when ".gif"
+                      animation = photo
+                      photo = ""
+                    end
+                end
 
 				# Send photos, stickers and text messages
 				unless video.to_s.strip.empty?
 					maya_logger "Sending to chat##{message.chat.id} #{message.from.id}@#{message.from.username}: VIDEO #{video}"
 					puts "Going to send video"
-					if $photos.has_key?(video)
-						puts "Has key"
-						bot.api.send_video(chat_id: message.chat.id, video: $photos[video])
-					else
-						puts "No key"
-						sent = bot.api.send_video(chat_id: message.chat.id, video: video)
-                        puts sent.to_s
+                    
+                    begin
+                      if $photos.has_key?(video)
+                          puts "Has key"
+                          bot.api.send_video(chat_id: message.chat.id, video: $photos[video])
+                      else
+                          puts "No key"
+                          sent = bot.api.send_video(chat_id: message.chat.id, video: video)
+                          puts sent.to_s
 
-						if sent['result']['animation']
-							puts "Has anim object"
-							$photos[video] = sent['result']['animation']['file_id']
-						elsif sent['result']['video']
-							puts "Has video object"
-							$photos[video] = sent['result']['video']['file_id']
-						end
-					end
+                          if sent['result']['animation']
+                              puts "Has anim object"
+                              $photos[video] = sent['result']['animation']['file_id']
+                          elsif sent['result']['video']
+                              puts "Has video object"
+                              $photos[video] = sent['result']['video']['file_id']
+                          end
+                      end
+                    rescue Exception => e
+                      maya_logger("EXCEPTION: Video Reply: " + e.to_s.strip)
+                    end
 				end
 
                 unless animation.to_s.strip.empty?
 					maya_logger "Sending to chat##{message.chat.id} #{message.from.id}@#{message.from.username}: ANIM #{animation}"
 					puts "Going to send animation"
-					if $photos.has_key?(animation)
-						puts "Has key"
-						bot.api.send_animation(chat_id: message.chat.id, animation: $photos[animation])
-						puts "Sent"
-					else
-						puts "No key"
-						sent = bot.api.send_animation(chat_id: message.chat.id, animation: animation)
-						puts "Sent"
-						$photos[animation] = sent['result']['animation']['file_id']
-						puts "Added key"
-					end
+
+                    begin
+                      if $photos.has_key?(animation)
+                          puts "Has key"
+                          bot.api.send_animation(chat_id: message.chat.id, animation: $photos[animation])
+                          puts "Sent"
+                      else
+                          puts "No key"
+                          sent = bot.api.send_animation(chat_id: message.chat.id, animation: animation)
+                          puts "Sent"
+                          $photos[animation] = sent['result']['animation']['file_id']
+                          puts "Added key"
+                      end
+                    rescue Exception => e
+                      maya_logger("EXCEPTION: Animation Reply: " + e.to_s.strip)
+                    end
 				end
 
 				unless photo.to_s.strip.empty?
 					maya_logger "Sending to chat##{message.chat.id} #{message.from.id}@#{message.from.username}: IMG #{photo}"
 					puts "Going to send image"
-					if $photos.has_key?(photo)
-						puts "Has key"
-						bot.api.send_photo(chat_id: message.chat.id, photo: $photos[photo])
-					else
-						puts "No key"
-						sent = bot.api.send_photo(chat_id: message.chat.id, photo: photo)
-						$photos[photo] = sent['result']['photo'][sent['result']['photo'].length - 1]['file_id']
-					end
+
+                    begin
+                      if $photos.has_key?(photo)
+                          puts "Has key"
+                          bot.api.send_photo(chat_id: message.chat.id, photo: $photos[photo])
+                      else
+                          puts "No key"
+                          sent = bot.api.send_photo(chat_id: message.chat.id, photo: photo)
+                          $photos[photo] = sent['result']['photo'][sent['result']['photo'].length - 1]['file_id']
+                      end
+                    rescue Exception => e
+                      maya_logger("EXCEPTION: Photo Reply: " + e.to_s.strip)
+                    end
 				end
 
 				unless sticker.to_s.strip.empty?
 					maya_logger "Sending to chat##{message.chat.id} #{message.from.id}@#{message.from.username}: STICKER #{sticker}"
-					if $stickers.has_key?(sticker)
-						bot.api.send_sticker(chat_id: message.chat.id, sticker: $stickers[sticker])
-					else
-						$stickers[sticker] = bot.api.send_sticker(chat_id: message.chat.id, sticker: Faraday::UploadIO.new(sticker, 'image/webp'))['result']['sticker']['file_id']
-					end
+
+                    begin
+                      if $stickers.has_key?(sticker)
+                          bot.api.send_sticker(chat_id: message.chat.id, sticker: $stickers[sticker])
+                      else
+                          $stickers[sticker] = bot.api.send_sticker(chat_id: message.chat.id, sticker: Faraday::UploadIO.new(sticker, 'image/webp'))['result']['sticker']['file_id']
+                      end
+                    rescue Exception => e
+                      maya_logger("EXCEPTION: Sticker Reply: " + e.to_s.strip)
+                    end
 				end
 
 				unless reply_text.to_s.strip.empty?
@@ -337,8 +373,16 @@ begin
 			end
 		end
 	end
+rescue SystemExit
+    maya_logger("EXCEPTION: SYSTEM EXIT")
 rescue Exception => e
 	maya_logger("EXCEPTION: #{e}")
+    retries += 1
+    sleep_time = retries * 10
+    if sleep_time > 60 then sleep_time = 60 end
+    maya_logger("EXCEPTION: RETRY: #{retries}; Sleeping for #{sleep_time} seconds")
+    sleep sleep_time
+    retry
 end
 
 maya_logger("M A Y A going to sleep...")
