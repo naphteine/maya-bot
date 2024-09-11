@@ -193,23 +193,19 @@ begin
 				unless photo.to_s.strip.empty?
 					maya_logger "Sending to chat##{message.chat.id} #{message.from.id}@#{message.from.username}: IMG #{photo}"
 					if $photos.has_key?(photo)
-						puts "HAS KEY: #{$photos[photo]} IMG #{photo}"
 						bot.api.send_photo(chat_id: message.chat.id, photo: $photos[photo])
 					else
 						sent = bot.api.send_photo(chat_id: message.chat.id, photo: photo)
 						$photos[photo] = sent['result']['photo'][sent['result']['photo'].length - 1]['file_id']
-						puts "ADDED KEY: #{$photos[photo]} IMG #{photo}"
 					end
 				end
 
 				unless sticker.to_s.strip.empty?
 					maya_logger "Sending to chat##{message.chat.id} #{message.from.id}@#{message.from.username}: STICKER #{sticker}"
 					if $stickers.has_key?(sticker)
-						puts "HAS KEY: #{$stickers[sticker]} STICKER #{sticker}"
 						bot.api.send_sticker(chat_id: message.chat.id, sticker: $stickers[sticker])
 					else
 						$stickers[sticker] = bot.api.send_sticker(chat_id: message.chat.id, sticker: Faraday::UploadIO.new(sticker, 'image/webp'))['result']['sticker']['file_id']
-						puts "ADDED KEY: #{$stickers[sticker]} STICKER #{sticker}"
 					end
 				end
 
