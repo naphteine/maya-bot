@@ -104,23 +104,30 @@ Telegram::Bot::Client.run($token) do |bot|
 			case message.text
 			when /^\/start/i
 				reply_text = "摩耶ちゃんでーす！"
+				maya_logger "Sending to #{message.from.id}@#{message.from.username}: #{reply_text}"
+				bot.api.send_message(chat_id: message.chat.id, text: reply_text)
 			when /^\/time/i
 				reply_text = "日本時間は#{nihonjikan}でーす。"
+				maya_logger "Sending to #{message.from.id}@#{message.from.username}: #{reply_text}"
+				bot.api.send_message(chat_id: message.chat.id, text: reply_text)
 			when /^\/map/i
 				bot.api.send_location(chat_id: message.chat.id, latitude: 52.479761, longitude: 62.185661)
 				reply_text = ["家", "いえ", "お父の家", "ハハハハ"].sample
+				maya_logger "Sending to #{message.from.id}@#{message.from.username}: #{reply_text}"
+				bot.api.send_message(chat_id: message.chat.id, text: reply_text)
 			when /^\/awake/i
 				reply_text = ["#{awake()} 😪", "#{awake(mode: 'hours')} 😪", "#{awake(mode: 'minutes')} 😪", "#{awake(mode: 'seconds')} 😪"].sample
+				maya_logger "Sending to #{message.from.id}@#{message.from.username}: #{reply_text}"
+				bot.api.send_message(chat_id: message.chat.id, text: reply_text)
 			when /^\/love/i
 				reply_text = "あたしも好きよ！　マスターを。。。"
+				maya_logger "Sending to #{message.from.id}@#{message.from.username}: #{reply_text}"
+				bot.api.send_message(chat_id: message.chat.id, text: reply_text)
 			when /^\/math/i
 				reply_text = calculate(message.text)
-			else
-				reply_text = ["What are you doing to me?", "なに", "何だよ。。", "Not tonight; I have a headache"].sample
+				maya_logger "Sending to #{message.from.id}@#{message.from.username}: #{reply_text}"
+				bot.api.send_message(chat_id: message.chat.id, text: reply_text)
 			end
-
-			maya_logger "Sending to #{message.from.id}@#{message.from.username}: #{reply_text}"
-			bot.api.send_message(chat_id: message.chat.id, text: reply_text)
 		end
 	end
 end
