@@ -2,7 +2,8 @@ require 'date'
 require 'telegram/bot'
 require 'dentaku'
 
-token = '1508647619:AAFOJVrNDnMzaZVNRvzw9SRB8qZk2H2RxmY'
+load('secrets.rb')
+
 $waking_up = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
 def maya_logger(text)
@@ -73,7 +74,7 @@ end
 
 maya_logger("Starting up...")
 
-Telegram::Bot::Client.run(token) do |bot|
+Telegram::Bot::Client.run($token) do |bot|
 	bot.listen do |message|
 		case message
 		when Telegram::Bot::Types::InlineQuery
