@@ -8,7 +8,7 @@ $waking_up = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
 def maya_logger(text)
 	puts "#{DateTime.now} #{text}"
-	open('maya.log', 'a') { |f|
+	open('logs/maya.log', 'a') { |f|
 		f.puts "#{DateTime.now} #{text}"
 	}
 end
