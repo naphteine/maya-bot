@@ -5,6 +5,7 @@ require 'open-uri'
 require 'json'
 require 'benchmark'
 require 'securerandom'
+require 'yaml'
 
 require_relative 'maya'
 
@@ -255,8 +256,10 @@ begin
 					)
 				end
 				bot.api.answer_inline_query(inline_query_id: message.id, results: results, cache_time: 5)
+				maya_logger "MESSAGE #{message.to_yaml}"
 				maya_logger "InlineQuery activity!"
 			when Telegram::Bot::Types::Message
+				maya_logger "MESSAGE #{message.to_yaml}"
 				maya_logger "chat##{message.chat.id} #{message.from.id}@#{message.from.username}: #{message.text}"
 
 				case message.text
