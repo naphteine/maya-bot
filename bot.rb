@@ -3,24 +3,38 @@ require 'telegram/bot'
 require 'dentaku'
 require 'open-uri'
 require 'json'
+require 'benchmark'
 
 load('secrets.rb')
 
+$log = "\n"
+
 def maya_logger(text)
-	puts "#{DateTime.now} #{text}"
-	open('logs/maya.log', 'a') { |f|
-		f.puts "#{DateTime.now} #{text}"
-	}
+	log = "#{DateTime.now} #{text}"
+	puts log
+	$log += "\n" + log
+
+	if $log.lines.length > 50
+		open('logs/maya.log', 'a') { |f|
+			f.write $log
+		}
+
+		$log = ""
+	end
+
 end
 
-maya_logger("Maya is waking up...")
+maya_logger("M A Y A waking up...")
 
 # Globals
 $waking_up = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
 begin
-	$cats = JSON.load(URI.open("https://cat-fact.herokuapp.com/facts"))
+	time = Benchmark.measure do
+		$cats = JSON.load(URI.open("https://cat-fact.herokuapp.com/facts"))
+	end
 	maya_logger("DEBUG: Loaded #{$cats.length} data from Cat Facts API")
+	puts "BENCHMARK Cats Facts API: #{time}"
 rescue
 	$cats = {
 	}
@@ -28,8 +42,11 @@ rescue
 end
 
 begin
-	$stickers = JSON.load_file('stickers.json')
+	time = Benchmark.measure do
+		$stickers = JSON.load_file('assets/stickers.json')
+	end
 	maya_logger("DEBUG: Loaded #{$stickers.length} sticker hashes from file")
+	puts "BENCHMARK Stickers load: #{time}"
 rescue
 	$stickers = {
 	}
@@ -37,8 +54,11 @@ rescue
 end
 
 begin
-	$photos = JSON.load_file('photos.json')
+	time = Benchmark.measure do
+		$photos = JSON.load_file('assets/photos.json')
+	end
 	maya_logger("DEBUG: Loaded #{$photos.length} photo hashes from file")
+	puts "BENCHMARK photos load: #{time}"
 rescue
 	$photos = {
 	}
@@ -101,7 +121,30 @@ def calculate(text)
 	end
 end
 
-maya_logger("Maya is now awake!")
+$forex_response = JSON.load(URI.open("https://www.frankfurter.app/latest?from=USD"))
+
+def forex(message)
+  lastThree = message[-3..]
+  response = "IDK"
+  lastThree.upcase!
+
+  if lastThree == "ALL"
+    output = "All FOREX data:\n"
+    $forex_response["rates"].each { |k,v| output += "USD/#{k} = #{sprintf('%.2f', v)}\n" }
+    return output
+  end
+
+  begin
+    response = lastThree + " is " + ($forex_response["rates"][lastThree]).to_s
+  rescue Exception => e
+    puts e
+    response = "I don't know?"
+  end
+
+  return response
+end
+
+maya_logger("M A Y A is now awake!")
 
 begin
 	Telegram::Bot::Client.run($token) do |bot|
@@ -157,9 +200,27 @@ begin
 					end
 				when /^\/dogs/i
 					begin
-						photo = JSON.load(URI.open("http://shibe.online/api/shibes?count=1&urls=true&httpsUrls=true"))[0]
+						photo = JSON.load(URI.open("https://random.dog/woof.json"))['url']
+						ext = File.extname(URI.parse(photo).path)
+						case ext
+						when ".mp4"
+                            video = photo
+                            photo = ""
+                        when ".webm"
+                            video = photo
+                            photo = ""
+						when ".gif"
+							animation = photo
+							photo = ""
+						end
 					rescue Exception => e
 						reply_text = "No dogs for you! Bad person!!"
+					end
+				when /^\/shiba/i
+					begin
+						photo = JSON.load(URI.open("http://shibe.online/api/shibes?count=1&urls=true&httpsUrls=true"))[0]
+					rescue Exception => e
+						reply_text = "No shiba for you! Bad person!!"
 					end
 				when /(^\/cats$)|(^\/cats@Mayachanbot$)/i
 					begin
@@ -173,6 +234,8 @@ begin
 					rescue Exception => e
 						reply_text = "No foxes for you! Bad person!!"
 					end
+                when /^\/forex/i
+                  reply_text = forex(message.text)
 
 				# Chatting
 				when /^Maya$/i
@@ -187,14 +250,67 @@ begin
 					else
 						reply_text = "Thank you! But I love my master.."
 					end
+				when /^Maya I need love$/i
+					if message.from.id == $master_id
+						sticker = ['menhera/nyan_love.webp', 'menhera/nyan_paws.webp', 'menhera/pillow_hug.webp'].sample
+						reply_text = "I love you!!"
+					else
+						reply_text = "Thank you! But I only love my master.."
+					end
+				when /^Maya bring me water$/i
+					if message.from.id == $master_id
+						reply_text = "かしこまりました！　はい、どうぞう！　🥤🥤"
+					else
+						reply_text = "No! You bring me"
+					end
 				end
 
 				# Send photos, stickers and text messages
+				unless video.to_s.strip.empty?
+					maya_logger "Sending to chat##{message.chat.id} #{message.from.id}@#{message.from.username}: VIDEO #{video}"
+					puts "Going to send video"
+					if $photos.has_key?(video)
+						puts "Has key"
+						bot.api.send_video(chat_id: message.chat.id, video: $photos[video])
+					else
+						puts "No key"
+						sent = bot.api.send_video(chat_id: message.chat.id, video: video)
+                        puts sent.to_s
+
+						if sent['result']['animation']
+							puts "Has anim object"
+							$photos[video] = sent['result']['animation']['file_id']
+						elsif sent['result']['video']
+							puts "Has video object"
+							$photos[video] = sent['result']['video']['file_id']
+						end
+					end
+				end
+
+                unless animation.to_s.strip.empty?
+					maya_logger "Sending to chat##{message.chat.id} #{message.from.id}@#{message.from.username}: ANIM #{animation}"
+					puts "Going to send animation"
+					if $photos.has_key?(animation)
+						puts "Has key"
+						bot.api.send_animation(chat_id: message.chat.id, animation: $photos[animation])
+						puts "Sent"
+					else
+						puts "No key"
+						sent = bot.api.send_animation(chat_id: message.chat.id, animation: animation)
+						puts "Sent"
+						$photos[animation] = sent['result']['animation']['file_id']
+						puts "Added key"
+					end
+				end
+
 				unless photo.to_s.strip.empty?
 					maya_logger "Sending to chat##{message.chat.id} #{message.from.id}@#{message.from.username}: IMG #{photo}"
+					puts "Going to send image"
 					if $photos.has_key?(photo)
+						puts "Has key"
 						bot.api.send_photo(chat_id: message.chat.id, photo: $photos[photo])
 					else
+						puts "No key"
 						sent = bot.api.send_photo(chat_id: message.chat.id, photo: photo)
 						$photos[photo] = sent['result']['photo'][sent['result']['photo'].length - 1]['file_id']
 					end
@@ -220,12 +336,12 @@ rescue Exception => e
 	maya_logger("EXCEPTION: #{e}")
 end
 
-maya_logger("Maya going down...")
+maya_logger("M A Y A going to sleep...")
 
 # Save hashes to file
 begin
-	File.open('stickers.json', "w+") do |f|
-		f << $stickers.to_json
+	File.open('assets/stickers.json', "w+") do |f|
+		f << JSON.pretty_generate($stickers)
 	end
 	maya_logger("DEBUG: Saved #{$stickers.length} sticker hashes to file")
 rescue Exception => e
@@ -233,12 +349,17 @@ rescue Exception => e
 end
 
 begin
-	File.open('photos.json', "w+") do |f|
-		f << $photos.to_json
+	File.open('assets/photos.json', "w+") do |f|
+		f << JSON.pretty_generate($photos)
 	end
 	maya_logger("DEBUG: Saved #{$photos.length} photo hashes to file")
 rescue Exception => e
 	maya_logger("EXCEPTION: Couldn't save photo hashes! #{e}")
 end
 
-maya_logger("さようなら。。。")
+maya_logger("M A Y A asleep.. Zzz")
+
+# Save log
+open('logs/maya.log', 'a') { |f|
+		f.write $log
+}
