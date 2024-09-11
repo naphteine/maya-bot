@@ -17,32 +17,27 @@ def nihonjikan()
 	return DateTime.now.new_offset('+09:00').strftime("%H:%M")
 end
 
-def awake(mode: "normal")
+def awake
 	raw_seconds = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - $waking_up).round()
 	raw_minutes = raw_seconds / 60
 	hours = raw_minutes / 60
 	seconds = raw_seconds - raw_minutes * 60
 	minutes = raw_minutes - hours * 60
 
-	case mode
-	when 'hours' && hours > 0
+	if raw_seconds > 7260
+		output = "#{hours} hours and #{minutes} minutes"
+	elsif raw_seconds > 7201
 		output = "#{hours} hours"
-	when 'minutes' && minutes > 0
-		output = "#{raw_minutes} minutes"
-	when 'seconds'
-		output = "#{raw_seconds} seconds"
+	elsif raw_seconds > 3659
+		output = "#{hours} hour and #{minutes} minutes"
+	elsif raw_seconds > 3599
+		output = "#{hours} hour"
+	elsif raw_seconds > 119
+		output = "#{minutes} minutes and #{seconds} seconds"
+	elsif raw_seconds > 59
+		output = "#{minutes} minute and #{seconds} seconds"
 	else
-		if raw_seconds > 7200
-			output = "#{hours}:#{minutes} hours"
-		elsif raw_seconds > 3600
-			output = "#{hours}:#{minutes} hour"
-		elsif raw_seconds > 120
-			output = "#{minutes}:#{seconds} minutes"
-		elsif raw_seconds > 60
-			output = "#{minutes}:#{seconds} minute"
-		else
-			output = "#{seconds} seconds"
-		end
+		output = "#{seconds} seconds"
 	end
 
 	return output
@@ -109,7 +104,7 @@ Telegram::Bot::Client.run($token) do |bot|
 			when /^\/map/i
 				bot.api.send_location(chat_id: message.chat.id, latitude: 52.479761, longitude: 62.185661)
 				reply_text = ["家", "いえ", "お父の家", "ハハハハ"].sample
-			when /^\/awake/i then reply_text = ["#{awake()} 😪", "#{awake(mode: 'hours')} 😪", "#{awake(mode: 'minutes')} 😪", "#{awake(mode: 'seconds')} 😪"].sample
+			when /^\/awake/i then reply_text = "#{awake()} 😪"
 			when /^\/love/i then reply_text = "あたしも好きよ！　マスターを。。。"
 			when /^\/math/i then reply_text = calculate(message.text)
 			when /^\/sleep/i
