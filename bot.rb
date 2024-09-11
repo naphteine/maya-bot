@@ -1,10 +1,14 @@
 require 'date'
 require 'telegram/bot'
 require 'dentaku'
+require 'open-uri'
+require 'json'
 
 load('secrets.rb')
 
 $waking_up = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+$cats = JSON.load(URI.open("https://cat-fact.herokuapp.com/facts"))
 
 def maya_logger(text)
 	puts "#{DateTime.now} #{text}"
@@ -109,9 +113,33 @@ Telegram::Bot::Client.run($token) do |bot|
 			when /^\/math/i then reply_text = calculate(message.text)
 			when /^\/sleep/i
 				if message.from.id == $master_id
-					reply_text = "Noo.. Sleeping with master 😳😳😳"
+					reply_text = "はずかしい 😳"
 				else
-					reply_text = "I only sleep with master... バカ"
+					reply_text = "Sorry, but I love and only will sleep with.. my master 💕"
+				end
+			when /(^\/cat$)|(^\/cat@Mayachanbot$)/i
+				begin
+					reply_text = $cats.sample['text']
+				rescue Exception => e
+					reply_text = "No cats for today.."
+				end
+			when /^\/dogs/i
+				begin
+					bot.api.send_photo(chat_id: message.chat.id, photo: JSON.load(URI.open("http://shibe.online/api/shibes?count=1&urls=true&httpsUrls=true"))[0])
+				rescue Exception => e
+					reply_text = "No dogs for you! Bad person!!"
+				end
+			when /(^\/cats$)|(^\/cats@Mayachanbot$)/i
+				begin
+					bot.api.send_photo(chat_id: message.chat.id, photo: JSON.load(URI.open("https://aws.random.cat/meow"))['file'])
+				rescue Exception => e
+					reply_text = "No cats for you! Bad person!!"
+				end
+			when /(^\/foxes$)|(^\/foxes@Mayachanbot$)/i
+				begin
+					bot.api.send_photo(chat_id: message.chat.id, photo: JSON.load(URI.open("https://randomfox.ca/floof/"))['image'])
+				rescue Exception => e
+					reply_text = "No foxes for you! Bad person!!"
 				end
 
 			# Chatting
@@ -119,7 +147,7 @@ Telegram::Bot::Client.run($token) do |bot|
 				if message.from.id == $master_id
 					reply_text = "Yes, master?"
 				else
-					reply_text = "What?"
+					reply_text = "???"
 				end
 			end
 
