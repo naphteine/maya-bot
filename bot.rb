@@ -5,6 +5,8 @@ require 'open-uri'
 require 'json'
 require 'benchmark'
 
+require_relative 'maya'
+
 load('secrets.rb')
 
 $log = "\n"
@@ -67,10 +69,6 @@ end
 
 
 # Methods
-def nihonjikan()
-	return DateTime.now.new_offset('+09:00').strftime("%H:%M")
-end
-
 def awake
 	raw_seconds = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - $waking_up).round()
 	raw_minutes = raw_seconds / 60
@@ -144,6 +142,10 @@ def forex(message)
   return response
 end
 
+def random_choice(message)
+  return command_arguments(message).split(",").sample
+end
+
 maya_logger("M A Y A is now awake!")
 
 begin
@@ -179,7 +181,7 @@ begin
 				case message.text
 				# Commands
 				when /^\/start/i then reply_text = "摩耶ちゃんでーす！"
-				when /^\/time/i then reply_text = "日本時間は#{nihonjikan}でーす。"
+				when /^\/time/i then reply_text = "日本時間は#{Maya.nihonjikan}でーす。"
 				when /^\/map/i
 					bot.api.send_location(chat_id: message.chat.id, latitude: 52.479761, longitude: 62.185661)
 					reply_text = ["家", "いえ", "お父の家", "ハハハハ"].sample
@@ -236,6 +238,8 @@ begin
 					end
                 when /^\/forex/i
                   reply_text = forex(message.text)
+                when /^\/choice/i
+                  reply_text = random_choice(message.text)
 
 				# Chatting
 				when /^Maya$/i
