@@ -6,13 +6,6 @@ require 'json'
 
 load('secrets.rb')
 
-$waking_up = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-
-$cats = JSON.load(URI.open("https://cat-fact.herokuapp.com/facts"))
-
-$stickers = {
-}
-
 def maya_logger(text)
 	puts "#{DateTime.now} #{text}"
 	open('logs/maya.log', 'a') { |f|
@@ -20,6 +13,40 @@ def maya_logger(text)
 	}
 end
 
+maya_logger("Maya is waking up...")
+
+# Globals
+$waking_up = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+begin
+	$cats = JSON.load(URI.open("https://cat-fact.herokuapp.com/facts"))
+	maya_logger("DEBUG: Loaded #{$cats.length} data from Cat Facts API")
+rescue
+	$cats = {
+	}
+	maya_logger("DEBUG: Couldn't load Cat Facts API. Creating empty hash")
+end
+
+begin
+	$stickers = JSON.load_file('stickers.json')
+	maya_logger("DEBUG: Loaded #{$stickers.length} sticker hashes from file")
+rescue
+	$stickers = {
+	}
+	maya_logger("DEBUG: No file, created new sticker hash")
+end
+
+begin
+	$photos = JSON.load_file('photos.json')
+	maya_logger("DEBUG: Loaded #{$photos.length} photo hashes from file")
+rescue
+	$photos = {
+	}
+	maya_logger("DEBUG: No file, created new photos hash")
+end
+
+
+# Methods
 def nihonjikan()
 	return DateTime.now.new_offset('+09:00').strftime("%H:%M")
 end
@@ -74,7 +101,7 @@ def calculate(text)
 	end
 end
 
-maya_logger("Maya is waking up...")
+maya_logger("Maya is now awake!")
 
 begin
 	Telegram::Bot::Client.run($token) do |bot|
@@ -92,7 +119,8 @@ begin
 						'reprehenderit in voluptate velit esse cillum dolore eu '\
 						'fugiat nulla pariatur. Excepteur sint occaecat cupidatat '\
 						'non proident, sunt in culpa qui officia deserunt mollit '\
-						'anim id est laborum.']
+						'anim id est laborum.'],
+					[4, 'Cat Facts', $cats.sample['text']]
 				].map do |arr|
 					Telegram::Bot::Types::InlineQueryResultArticle.new(
 						id: arr[0],
@@ -129,19 +157,19 @@ begin
 					end
 				when /^\/dogs/i
 					begin
-						bot.api.send_photo(chat_id: message.chat.id, photo: JSON.load(URI.open("http://shibe.online/api/shibes?count=1&urls=true&httpsUrls=true"))[0])
+						photo = JSON.load(URI.open("http://shibe.online/api/shibes?count=1&urls=true&httpsUrls=true"))[0]
 					rescue Exception => e
 						reply_text = "No dogs for you! Bad person!!"
 					end
 				when /(^\/cats$)|(^\/cats@Mayachanbot$)/i
 					begin
-						bot.api.send_photo(chat_id: message.chat.id, photo: JSON.load(URI.open("https://aws.random.cat/meow"))['file'])
+						photo = JSON.load(URI.open("https://aws.random.cat/meow"))['file']
 					rescue Exception => e
 						reply_text = "No cats for you! Bad person!!"
 					end
 				when /(^\/foxes$)|(^\/foxes@Mayachanbot$)/i
 					begin
-						bot.api.send_photo(chat_id: message.chat.id, photo: JSON.load(URI.open("https://randomfox.ca/floof/"))['image'])
+						photo = JSON.load(URI.open("https://randomfox.ca/floof/"))['image']
 					rescue Exception => e
 						reply_text = "No foxes for you! Bad person!!"
 					end
@@ -161,9 +189,27 @@ begin
 					end
 				end
 
+				# Send photos, stickers and text messages
+				unless photo.to_s.strip.empty?
+					maya_logger "Sending to chat##{message.chat.id} #{message.from.id}@#{message.from.username}: IMG #{photo}"
+					if $photos.has_key?(photo)
+						puts "HAS KEY: #{$photos[photo]} IMG #{photo}"
+						bot.api.send_photo(chat_id: message.chat.id, photo: $photos[photo])
+					else
+						sent = bot.api.send_photo(chat_id: message.chat.id, photo: photo)
+						$photos[photo] = sent['result']['photo'][sent['result']['photo'].length - 1]['file_id']
+						puts "ADDED KEY: #{$photos[photo]} IMG #{photo}"
+					end
+				end
+
 				unless sticker.to_s.strip.empty?
-					if $stickers.has_key?(sticker) then bot.api.send_sticker(chat_id: message.chat.id, sticker: $stickers[sticker])
-					else $stickers[sticker] = bot.api.send_sticker(chat_id: message.chat.id, sticker: Faraday::UploadIO.new(sticker, 'image/webp'))['result']['sticker']['file_id']
+					maya_logger "Sending to chat##{message.chat.id} #{message.from.id}@#{message.from.username}: STICKER #{sticker}"
+					if $stickers.has_key?(sticker)
+						puts "HAS KEY: #{$stickers[sticker]} STICKER #{sticker}"
+						bot.api.send_sticker(chat_id: message.chat.id, sticker: $stickers[sticker])
+					else
+						$stickers[sticker] = bot.api.send_sticker(chat_id: message.chat.id, sticker: Faraday::UploadIO.new(sticker, 'image/webp'))['result']['sticker']['file_id']
+						puts "ADDED KEY: #{$stickers[sticker]} STICKER #{sticker}"
 					end
 				end
 
@@ -178,4 +224,25 @@ rescue Exception => e
 	maya_logger("EXCEPTION: #{e}")
 end
 
-maya_logger("Maya going down... さようなら。")
+maya_logger("Maya going down...")
+
+# Save hashes to file
+begin
+	File.open('stickers.json', "w+") do |f|
+		f << $stickers.to_json
+	end
+	maya_logger("DEBUG: Saved #{$stickers.length} sticker hashes to file")
+rescue Exception => e
+	maya_logger("EXCEPTION: Couldn't save sticker ashes! #{e}")
+end
+
+begin
+	File.open('photos.json', "w+") do |f|
+		f << $photos.to_json
+	end
+	maya_logger("DEBUG: Saved #{$photos.length} photo hashes to file")
+rescue Exception => e
+	maya_logger("EXCEPTION: Couldn't save photo hashes! #{e}")
+end
+
+maya_logger("さようなら。。。")
