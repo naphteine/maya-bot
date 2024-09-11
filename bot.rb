@@ -102,18 +102,18 @@ Telegram::Bot::Client.run($token) do |bot|
 		when Telegram::Bot::Types::Message
 			maya_logger "#{message.from.id}@#{message.from.username}: #{message.text}"
 			case message.text
-			when '/start'
+			when /^\/start/i
 				reply_text = "摩耶ちゃんでーす！"
-			when '/time'
+			when /^\/time/i
 				reply_text = "日本時間は#{nihonjikan}でーす。"
-			when '/map'
+			when /^\/map/i
 				bot.api.send_location(chat_id: message.chat.id, latitude: 52.479761, longitude: 62.185661)
 				reply_text = ["家", "いえ", "お父の家", "ハハハハ"].sample
-			when '/awake'
+			when /^\/awake/i
 				reply_text = ["#{awake()} 😪", "#{awake(mode: 'hours')} 😪", "#{awake(mode: 'minutes')} 😪", "#{awake(mode: 'seconds')} 😪"].sample
-			when '/love'
+			when /^\/love/i
 				reply_text = "あたしも好きよ！　マスターを。。。"
-			when /\/math/i
+			when /^\/math/i
 				reply_text = calculate(message.text)
 			else
 				reply_text = ["What are you doing to me?", "なに", "何だよ。。", "Not tonight; I have a headache"].sample
